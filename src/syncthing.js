@@ -289,14 +289,19 @@ class Device extends Item {
 
 // Local host device
 class HostDevice extends Device {
+  #managerDeviceAddId;
+
   constructor(data, manager) {
     super(data, manager);
-    this._manager.connect(Signal.DEVICE_ADD, (manager, device) => {
-      device.connect(
-        Signal.STATE_CHANGE,
-        this.determineStateDelayed.bind(this),
-      );
-    });
+    this.#managerDeviceAddId = this._manager.connect(
+      Signal.DEVICE_ADD,
+      (manager, device) => {
+        device.connect(
+          Signal.STATE_CHANGE,
+          this.determineStateDelayed.bind(this),
+        );
+      },
+    );
     this._manager.devices.foreach((device) => {
       device.connect(
         Signal.STATE_CHANGE,
@@ -304,6 +309,14 @@ class HostDevice extends Device {
       );
     });
     this.determineState();
+  }
+
+  destroy() {
+    if (this.#managerDeviceAddId) {
+      this._manager.disconnect(this.#managerDeviceAddId);
+      this.#managerDeviceAddId = 0;
+    }
+    super.destroy();
   }
 
   determineState() {
