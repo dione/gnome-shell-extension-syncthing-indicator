@@ -113,6 +113,8 @@ export const SyncthingIndicatorToggle = GObject.registerClass(
               break;
             case Syncthing.ServiceState.SYSTEM_STOPPED:
               this._toggle.reactive = false;
+              this.checked = false;
+              break;
             case Syncthing.ServiceState.ERROR:
               this.checked = false;
               break;

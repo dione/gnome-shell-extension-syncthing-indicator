@@ -580,6 +580,8 @@ export const ServiceSwitchMenuItem = GObject.registerClass(
               break;
             case Syncthing.ServiceState.SYSTEM_STOPPED:
               this.setSensitive(false);
+              this.setToggleState(false);
+              break;
             case Syncthing.ServiceState.ERROR:
               this.setToggleState(false);
               break;
@@ -639,6 +641,8 @@ export const AutoSwitchMenuItem = GObject.registerClass(
               break;
             case Syncthing.ServiceState.SYSTEM_DISABLED:
               this.setSensitive(false);
+              this.setToggleState(false);
+              break;
             case Syncthing.ServiceState.ERROR:
               this.setToggleState(false);
               break;
