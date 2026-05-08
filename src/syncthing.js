@@ -374,6 +374,7 @@ export class Manager extends Utils.Emitter {
   #serviceUserMode = true;
   #serviceConnected = false;
   #pollTimer = new Utils.Timer(POLL_TIME, true);
+  #eventTimer = new Utils.Timer(RESCHEDULE_EVENT_DELAY);
   #pollCount = 1; // Start at 1 to stop from cycling the hooks at init
   #lastEventID = 1;
   #hostID = "";
@@ -446,8 +447,9 @@ export class Manager extends Utils.Emitter {
           id: events[i].id,
         });
       }
+      if (this.#httpAborting) return;
       // Reschedule this event stream
-      Utils.Timer.run(RESCHEDULE_EVENT_DELAY, () => {
+      this.#eventTimer.run(() => {
         this.#callEvents("since=" + this.#lastEventID);
       });
     });
@@ -1091,10 +1093,14 @@ export class Manager extends Utils.Emitter {
 
   // Release all resources
   destroy() {
+    this.#httpAborting = true;
+    this.#httpSession.abort();
     this.#pollTimer.destroy();
+    this.#eventTimer.destroy();
     this.#extensionConfig.destroy();
     this.folders.destroy();
     this.devices.destroy();
+    this.#httpAborting = false;
   }
 
   // Attach to Syncthing service
