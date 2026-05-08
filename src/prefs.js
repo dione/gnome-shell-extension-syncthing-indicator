@@ -261,18 +261,24 @@ export default class SyncthingIndicatorExtensionPreferences extends ExtensionPre
   }
 
   showAbout() {
-    const about_window = new Adw.AboutWindow({
-      transient_for: this._window,
-      modal: true,
-    });
-    about_window.set_application_icon("syncthing-indicator");
-    about_window.set_application_name(this._i18n._("syncthing-indicator"));
-    about_window.set_version(`${this.metadata.version}`);
-    about_window.set_developer_name("2nv2u");
-    about_window.set_issue_url(this.metadata.url + "/issues");
-    about_window.set_website(this.metadata.url);
-    about_window.set_license_type(Gtk.License.GPL_3_0);
-    about_window.set_copyright(this._i18n._("copyright") + " © 2026 2nv2u");
-    about_window.show();
+    // Adw.AboutDialog superseded Adw.AboutWindow in libadwaita 1.6
+    // (GNOME 47+). Prefer the new API and fall back for older shells.
+    const useDialog = typeof Adw.AboutDialog === "function";
+    const about = useDialog
+      ? new Adw.AboutDialog()
+      : new Adw.AboutWindow({ transient_for: this._window, modal: true });
+    about.set_application_icon("syncthing-indicator");
+    about.set_application_name(this._i18n._("syncthing-indicator"));
+    about.set_version(`${this.metadata.version}`);
+    about.set_developer_name("2nv2u");
+    about.set_issue_url(this.metadata.url + "/issues");
+    about.set_website(this.metadata.url);
+    about.set_license_type(Gtk.License.GPL_3_0);
+    about.set_copyright(this._i18n._("copyright") + " © 2026 2nv2u");
+    if (useDialog) {
+      about.present(this._window);
+    } else {
+      about.show();
+    }
   }
 }
