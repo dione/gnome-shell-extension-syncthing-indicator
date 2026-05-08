@@ -452,9 +452,9 @@ export class Manager extends Utils.Emitter {
   }
 
   #callEvents(options) {
-    this.#openConnection("GET", "/rest/events?" + options, (events) => {
+    this.#openConnection("GET", "/rest/events?" + options, async (events) => {
       for (let i = 0; i < events.length; i++) {
-        this.#processEvent({
+        await this.#processEvent({
           type: events[i].type,
           data: events[i].data,
           id: events[i].id,
