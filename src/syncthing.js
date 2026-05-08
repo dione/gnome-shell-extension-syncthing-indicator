@@ -482,7 +482,11 @@ export class Manager extends Utils.Emitter {
           if (event.data.success) {
             this.emit(Signal.LOGIN, event.data.username);
           } else {
-            this.emit(Error.LOGIN, event.data.username);
+            console.error(LOG_PREFIX, Error.LOGIN, event.data.username);
+            this.emit(Signal.ERROR, {
+              type: Error.LOGIN,
+              message: event.data.username,
+            });
           }
           break;
         case EventType.FOLDER_ERRORS:
