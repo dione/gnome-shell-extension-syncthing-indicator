@@ -418,6 +418,9 @@ export class Manager extends Utils.Emitter {
         switch (state) {
           case ServiceState.USER_ACTIVE:
           case ServiceState.SYSTEM_ACTIVE:
+            // Recover from any prior destroy() that left aborting set so
+            // post-destroy callbacks couldn't resurrect timers.
+            this.#httpAborting = false;
             const status = await this.#serviceCall(
               "GET",
               "/rest/system/status",
@@ -1112,6 +1115,10 @@ export class Manager extends Utils.Emitter {
 
   // Release all resources
   destroy() {
+    // Leave #httpAborting set: callbacks queued before abort() finish
+    // asynchronously after destroy() returns, and we need them to skip
+    // emits / reschedules. The next USER_ACTIVE / SYSTEM_ACTIVE handler
+    // resets the flag before issuing fresh requests.
     this.#httpAborting = true;
     this.#httpSession.abort();
     this.#pollTimer.destroy();
@@ -1119,7 +1126,6 @@ export class Manager extends Utils.Emitter {
     this.#extensionConfig.destroy();
     this.folders.destroy();
     this.devices.destroy();
-    this.#httpAborting = false;
   }
 
   // Attach to Syncthing service
