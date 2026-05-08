@@ -823,8 +823,9 @@ export class Manager extends Utils.Emitter {
   async #isServiceActive() {
     let active = false,
       error = false,
-      command = "api";
+      source = "api";
     if (this.#extensionConfig.useSystemD) {
+      source = "systemd";
       const command = await this.#serviceCommand(
         "is-active",
         this.#serviceUserMode,
@@ -837,6 +838,7 @@ export class Manager extends Utils.Emitter {
           "systemd call failed, switching to API only mode",
         );
         this.#extensionConfig.useSystemD = !error;
+        source = "api";
       }
     }
     if (!this.#extensionConfig.useSystemD) {
@@ -851,7 +853,7 @@ export class Manager extends Utils.Emitter {
     console.info(
       LOG_PREFIX,
       "service active",
-      command,
+      source,
       this.#serviceUserMode,
       this.#serviceActive,
     );
