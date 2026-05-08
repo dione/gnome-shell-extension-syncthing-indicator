@@ -61,5 +61,6 @@ export default class SyncthingIndicatorExtension extends Extension {
     this.indicator = null;
     this.manager.destroy();
     this.manager = null;
+    Utils.I18N.reset();
   }
 }

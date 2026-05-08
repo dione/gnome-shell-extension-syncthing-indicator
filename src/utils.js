@@ -20,16 +20,26 @@ export class I18N {
   #data;
   #file;
   #gettext;
+  #extension;
 
   constructor(extension, gettext) {
-    // Create a singleton of this class
-    if (I18N._instance) return I18N._instance;
+    // Singleton scoped to the current extension instance. The ESM
+    // module cache survives disable()/enable(), so a plain singleton
+    // would hold onto the previous extension's gettext + path forever.
+    if (I18N._instance && I18N._instance.#extension === extension) {
+      return I18N._instance;
+    }
     I18N._instance = this;
 
+    this.#extension = extension;
     this.#gettext = gettext;
     this.#file = Gio.File.new_for_path(
       extension.path + "/locale/fallback.json",
     );
+  }
+
+  static reset() {
+    I18N._instance = null;
   }
 
   gettext(str) {
