@@ -188,7 +188,7 @@ export default class Config {
     const serviceUri = this.settings.get_string("service-uri");
     if (
       apiKey.length > 0 &&
-      serviceUri.search("https?://[-a-zA-Z0-9.]{1,256}:[0-9]{2,5}") >= 0
+      /^https?:\/\/[-a-zA-Z0-9.]{1,256}:[0-9]{2,5}$/.test(serviceUri)
     ) {
       this.prefApiKey = apiKey;
       this.prefURI = serviceUri;
