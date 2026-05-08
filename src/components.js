@@ -9,6 +9,7 @@
 ============================================================================================================= */
 
 import Gio from "gi://Gio";
+import GLib from "gi://GLib";
 import GObject from "gi://GObject";
 import St from "gi://St";
 
@@ -286,21 +287,27 @@ export const FolderMenuItem = GObject.registerClass(
       super._init();
       this._folder = folder;
       let gicon;
-      // Remove ~ from folders, resolving this doesn not work
-      this.file = Gio.File.new_for_path(this._folder.path.replace("~/", ""));
+      // Expand a leading "~" or "~/" to the user's home directory; Gio
+      // doesn't do it for us. Leave "~user/..." alone — Syncthing folder
+      // paths shouldn't use it, and a naive replace would yield a bogus
+      // "/home/<self><user>/..." path.
+      const folderPath = this._folder.path;
+      const expanded =
+        folderPath === "~" || folderPath.startsWith("~/")
+          ? folderPath.replace(/^~/, GLib.get_home_dir())
+          : folderPath;
+      this.file = Gio.File.new_for_path(expanded);
       try {
         gicon = this.file
           .query_info("standard::symbolic-icon", 0, null)
           .get_symbolic_icon();
       } catch (e) {
-        if (e instanceof Gio.IOErrorEnum) {
-          if (!this.file.is_native()) {
-            icon = new Gio.ThemedIcon({
-              name: "folder-remote-symbolic",
-            });
-          } else {
-            icon = new Gio.ThemedIcon({ name: "folder-symbolic" });
-          }
+        if (e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND)) {
+          gicon = new Gio.ThemedIcon({
+            name: this.file.is_native()
+              ? "folder-symbolic"
+              : "folder-remote-symbolic",
+          });
         } else {
           throw e;
         }
