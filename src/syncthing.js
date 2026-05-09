@@ -378,7 +378,10 @@ class FolderCompletionProxy extends Folder {
 
 // Main system manager
 export class Manager extends Utils.Emitter {
-  #httpSession = new Soup.Session();
+  // 90 s covers the longest expected `/rest/events` long-poll;
+  // anything beyond that means the daemon is wedged and we'd rather
+  // surface a TIMED_OUT than wait forever.
+  #httpSession = new Soup.Session({timeout: 90});
   // Pin in-flight Soup.Message wrappers so their JS wrappers outlive
   // the underlying queue item; otherwise libsoup trips a runtime
   // check ("soup_message_queue_item_destroy: ... item->msg) == NULL")
