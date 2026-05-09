@@ -36,15 +36,19 @@ export default class SyncthingIndicatorExtension extends Extension {
       this.metadata.path,
     );
     switch (this.settings.get_int("menu")) {
+      case 1:
+        this.indicator = new PanelMenu.SyncthingIndicatorPanel(this);
+        Main.panel.addToStatusArea("SyncthingIndicatorPanel", this.indicator);
+        break;
       case 0:
+      default:
+        // Fall back to Quick Settings for any unexpected value rather
+        // than leaving `this.indicator` undefined and crashing
+        // disable().
         this.indicator = new QuickSetting.SyncthingIndicatorQuickSetting(this);
         Main.panel.statusArea.quickSettings.addExternalIndicator(
           this.indicator,
         );
-        break;
-      case 1:
-        this.indicator = new PanelMenu.SyncthingIndicatorPanel(this);
-        Main.panel.addToStatusArea("SyncthingIndicatorPanel", this.indicator);
         break;
     }
     this.manager.attach();
@@ -57,9 +61,9 @@ export default class SyncthingIndicatorExtension extends Extension {
       this._settingsChangedId = 0;
     }
     this.settings = null;
-    this.indicator.destroy();
+    this.indicator?.destroy();
     this.indicator = null;
-    this.manager.destroy();
+    this.manager?.destroy();
     this.manager = null;
     Utils.I18N.reset();
   }
