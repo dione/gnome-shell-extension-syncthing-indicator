@@ -1188,13 +1188,13 @@ export class Manager extends Utils.Emitter {
   async enableService() {
     this.#setService(true);
     await this.#serviceCommand("enable");
-    this.#isServiceEnabled();
+    await this.#isServiceEnabled();
   }
 
   // Disable Syncthing service
   async disableService() {
     await this.#serviceCommand("disable");
-    this.#isServiceEnabled();
+    await this.#isServiceEnabled();
   }
 
   // Start Syncthing service
@@ -1202,16 +1202,18 @@ export class Manager extends Utils.Emitter {
     this.#setService();
     await this.#serviceCommand("start");
     await Utils.sleep(POLL_DELAY_TIME);
-    this.#isServiceActive();
+    await this.#isServiceActive();
   }
 
-  // Stop Syncthing service
+  // Stop Syncthing service. Don't reset #httpAborting here —
+  // `#isServiceActive` triggers SERVICE_CHANGE → USER_STOPPED, whose
+  // handler calls destroy() and owns the flag. The next USER_ACTIVE
+  // transition resets it before issuing fresh requests.
   async stopService() {
     this.#httpAborting = true;
     this.#httpSession.abort();
     await this.#serviceCommand("stop");
-    this.#isServiceActive();
-    this.#httpAborting = false;
+    await this.#isServiceActive();
   }
 
   get serviceURI() {
