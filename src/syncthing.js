@@ -852,8 +852,8 @@ export class Manager extends Utils.Emitter {
     }
     if (!this.#extensionConfig.useSystemD) {
       const result = await this.#serviceCall("GET", "/rest/system/ping");
-      active = result["ping"] == "pong" ? "ping" in result : false;
-      error = !active ? active : error;
+      active = result?.ping === "pong";
+      if (!active) error = true;
     }
     if (error) {
       console.error(LOG_PREFIX, Error.DAEMON, Service.NAME);
