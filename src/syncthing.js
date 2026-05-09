@@ -379,6 +379,12 @@ class FolderCompletionProxy extends Folder {
 // Main system manager
 export class Manager extends Utils.Emitter {
   #httpSession = new Soup.Session();
+  // Pin in-flight Soup.Message wrappers so their JS wrappers outlive
+  // the underlying queue item; otherwise libsoup trips a runtime
+  // check ("soup_message_queue_item_destroy: ... item->msg) == NULL")
+  // when GC reaps the wrapper before the queue item is fully torn
+  // down. See gjs#486-style lifecycle issue.
+  #pendingMessages = new Set();
   #httpAborting = false;
   #httpErrorCount = 0;
   #serviceRetries = 0;
@@ -954,6 +960,7 @@ export class Manager extends Utils.Emitter {
           return true;
         });
         msg.request_headers.append("X-API-Key", this.#extensionConfig.APIKey);
+        this.#pendingMessages.add(msg);
         this.#openConnectionMessage(msg, callback, errorCallback);
       } else if (errorCallback) {
         errorCallback(new globalThis.Error(Error.CONFIG));
@@ -1087,6 +1094,10 @@ export class Manager extends Utils.Emitter {
               connected ? ServiceState.CONNECTED : ServiceState.DISCONNECTED,
             );
           }
+          // Drop the pin once libsoup has handed back the result; on
+          // TIMED_OUT we already returned early so the retry can hold
+          // onto the same msg.
+          this.#pendingMessages?.delete(msg);
         },
       );
       } else if (errorCallback) {
@@ -1126,6 +1137,7 @@ export class Manager extends Utils.Emitter {
     this.#extensionConfig.destroy();
     this.folders.destroy();
     this.devices.destroy();
+    this.#pendingMessages.clear();
   }
 
   // Attach to Syncthing service
