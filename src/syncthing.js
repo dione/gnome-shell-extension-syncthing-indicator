@@ -464,20 +464,35 @@ export class Manager extends Utils.Emitter {
   }
 
   #callEvents(options) {
-    this.#openConnection("GET", "/rest/events?" + options, async (events) => {
-      for (let i = 0; i < events.length; i++) {
-        await this.#processEvent({
-          type: events[i].type,
-          data: events[i].data,
-          id: events[i].id,
+    this.#openConnection(
+      "GET",
+      "/rest/events?" + options,
+      async (events) => {
+        for (let i = 0; i < events.length; i++) {
+          await this.#processEvent({
+            type: events[i].type,
+            data: events[i].data,
+            id: events[i].id,
+          });
+        }
+        if (this.#httpAborting) return;
+        // Reschedule this event stream
+        this.#eventTimer.run(() => {
+          this.#callEvents("since=" + this.#lastEventID);
         });
-      }
-      if (this.#httpAborting) return;
-      // Reschedule this event stream
-      this.#eventTimer.run(() => {
-        this.#callEvents("since=" + this.#lastEventID);
-      });
-    });
+      },
+      (error) => {
+        // Without an errorCallback the events stream silently dies
+        // after HTTP_ERROR_RETRIES strikes and only resumes on the
+        // next USER_ACTIVE transition. Re-arm with the standard event
+        // delay so the loop self-heals once the daemon comes back.
+        if (this.#httpAborting) return;
+        console.warn(LOG_PREFIX, "events stream error, will retry", error?.message);
+        this.#eventTimer.run(() => {
+          this.#callEvents("since=" + this.#lastEventID);
+        });
+      },
+    );
   }
 
   async #processEvent(event) {
