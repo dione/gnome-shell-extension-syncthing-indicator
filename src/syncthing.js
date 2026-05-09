@@ -661,7 +661,7 @@ export class Manager extends Utils.Emitter {
         const folder = this.folders.get(folderID);
         this.#openConnection(
           "GET",
-          "/rest/db/status?folder=" + folderID,
+          "/rest/db/status?folder=" + encodeURIComponent(folderID),
           (data) => {
             folder.state = data.state;
           },
@@ -722,9 +722,9 @@ export class Manager extends Utils.Emitter {
                 this.#openConnection(
                   "GET",
                   "/rest/db/completion?folder=" +
-                    proxy.id +
+                    encodeURIComponent(proxy.id) +
                     "&device=" +
-                    device.id,
+                    encodeURIComponent(device.id),
                   (data) => {
                     proxy.setCompletion(data.completion);
                   },
@@ -1187,7 +1187,10 @@ export class Manager extends Utils.Emitter {
 
   rescan(folder) {
     if (folder) {
-      this.#openConnection("POST", "/rest/db/scan?folder=" + folder.id);
+      this.#openConnection(
+        "POST",
+        "/rest/db/scan?folder=" + encodeURIComponent(folder.id),
+      );
     } else {
       this.#openConnection("POST", "/rest/db/scan");
     }
@@ -1195,13 +1198,19 @@ export class Manager extends Utils.Emitter {
 
   resume(device) {
     if (device) {
-      this.#openConnection("POST", "/rest/system/resume?device=" + device.id);
+      this.#openConnection(
+        "POST",
+        "/rest/system/resume?device=" + encodeURIComponent(device.id),
+      );
     }
   }
 
   pause(device) {
     if (device) {
-      this.#openConnection("POST", "/rest/system/pause?device=" + device.id);
+      this.#openConnection(
+        "POST",
+        "/rest/system/pause?device=" + encodeURIComponent(device.id),
+      );
     }
   }
 }
