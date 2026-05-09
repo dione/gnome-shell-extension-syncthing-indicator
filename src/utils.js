@@ -92,6 +92,7 @@ export class Timer {
   #recurring;
   #priority;
   #source;
+  #destroyed = false;
 
   constructor(
     timeout,
@@ -110,6 +111,7 @@ export class Timer {
     recurring = this.#recurring,
     priority = this.#priority,
   ) {
+    if (this.#destroyed) return; // refuse to revive a destroyed timer
     this.cancel();
     this.#run(callback, timeout, recurring, priority);
   }
@@ -148,10 +150,11 @@ export class Timer {
   }
 
   destroy() {
+    this.#destroyed = true;
     if (Timer._timers.has(this)) {
       Timer._timers.delete(this);
-      this.cancel();
     }
+    this.cancel();
   }
 }
 
