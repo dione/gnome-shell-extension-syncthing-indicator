@@ -32,8 +32,16 @@ export const SyncthingIndicatorToggle = GObject.registerClass(
         toggleMode: true,
       });
 
-      // TODO: Access to internals of QuickMenuToggle, revisit!
-      this._toggle = this._box.get_child_at_index(0);
+      // Reach into QuickMenuToggle's private layout to grab the inner
+      // toggle actor. Layout has shifted between GS releases — fall
+      // back to `this` (the toggle button itself) so the extension
+      // still works on a future shell that drops `_box`.
+      try {
+        this._toggle = this._box?.get_child_at_index(0) ?? this;
+      } catch (e) {
+        console.warn(LOG_PREFIX, "QuickMenuToggle._box unavailable", e.message);
+        this._toggle = this;
+      }
       this._toggle.reactive = extension.settings.get_boolean("use-systemd");
 
       this.extension = extension;
@@ -49,8 +57,14 @@ export const SyncthingIndicatorToggle = GObject.registerClass(
       const actionBar = new St.Widget({
         layout_manager: actionLayout,
       });
-      this.menu._headerSpacer.x_align = Clutter.ActorAlign.END;
-      this.menu._headerSpacer.add_child(actionBar);
+      // QuickToggleMenu private layout — guard against future renames.
+      const headerSpacer = this.menu._headerSpacer;
+      if (headerSpacer) {
+        headerSpacer.x_align = Clutter.ActorAlign.END;
+        headerSpacer.add_child(actionBar);
+      } else {
+        console.warn(LOG_PREFIX, "QuickToggleMenu._headerSpacer missing; action bar omitted");
+      }
 
       const rescanButton = new Components.RescanButton(extension);
       actionLayout.attach(rescanButton, 0, 0, 1, 1);
@@ -149,7 +163,10 @@ export const SyncthingIndicatorQuickSetting = GObject.registerClass(
       );
       this.panel.icon.addActor(this._addIndicator());
       this.panel.icon.addActor(this.toggle);
-      this.panel.icon.addActor(this.toggle.menu._headerIcon);
+      const headerIcon = this.toggle.menu._headerIcon;
+      if (headerIcon) {
+        this.panel.icon.addActor(headerIcon);
+      }
     }
 
     destroy() {
