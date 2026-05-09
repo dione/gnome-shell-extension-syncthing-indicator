@@ -234,15 +234,17 @@ class ItemCollection extends Utils.Emitter {
 // Remote device item
 class Device extends Item {
   #determineTimer = new Utils.Timer(DEVICE_STATE_DELAY);
+  #folderStateSignals = new Map(); // folder → STATE_CHANGE handler id
 
   constructor(data, manager) {
     super(data, manager);
     this.folders = new ItemCollection();
     this.folders.connect(Signal.ADD, (collection, folder) => {
-      folder.connect(
+      const id = folder.connect(
         Signal.STATE_CHANGE,
         this.determineStateDelayed.bind(this),
       );
+      this.#folderStateSignals.set(folder, id);
     });
   }
 
@@ -283,6 +285,15 @@ class Device extends Item {
 
   destroy() {
     this.#determineTimer.destroy();
+    // Disconnect from each folder we listen on, then tear down the
+    // folder collection itself — without this, FolderCompletionProxy
+    // instances keep their own #stateTimer registered in the static
+    // `Utils.Timer._timers` set across config-save cycles.
+    for (const [folder, id] of this.#folderStateSignals) {
+      folder.disconnect(id);
+    }
+    this.#folderStateSignals.clear();
+    this.folders?.destroy();
     super.destroy();
   }
 }
@@ -290,24 +301,22 @@ class Device extends Item {
 // Local host device
 class HostDevice extends Device {
   #managerDeviceAddId;
+  #siblingStateSignals = new Map(); // device → STATE_CHANGE handler id
 
   constructor(data, manager) {
     super(data, manager);
-    this.#managerDeviceAddId = this._manager.connect(
-      Signal.DEVICE_ADD,
-      (manager, device) => {
-        device.connect(
-          Signal.STATE_CHANGE,
-          this.determineStateDelayed.bind(this),
-        );
-      },
-    );
-    this._manager.devices.foreach((device) => {
-      device.connect(
+    const subscribe = (device) => {
+      const id = device.connect(
         Signal.STATE_CHANGE,
         this.determineStateDelayed.bind(this),
       );
-    });
+      this.#siblingStateSignals.set(device, id);
+    };
+    this.#managerDeviceAddId = this._manager.connect(
+      Signal.DEVICE_ADD,
+      (manager, device) => subscribe(device),
+    );
+    this._manager.devices.foreach(subscribe);
     this.determineState();
   }
 
@@ -316,6 +325,16 @@ class HostDevice extends Device {
       this._manager.disconnect(this.#managerDeviceAddId);
       this.#managerDeviceAddId = 0;
     }
+    for (const [device, id] of this.#siblingStateSignals) {
+      // Sibling may already be destroyed (collection-wide tear-down);
+      // disconnect via try/catch to avoid noisy criticals.
+      try {
+        device.disconnect(id);
+      } catch (e) {
+        // Ignore — handler already gone with the dead device.
+      }
+    }
+    this.#siblingStateSignals.clear();
     super.destroy();
   }
 
