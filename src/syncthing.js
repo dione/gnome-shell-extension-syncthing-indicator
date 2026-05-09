@@ -1104,10 +1104,15 @@ export class Manager extends Utils.Emitter {
           this.#pendingMessages?.delete(msg);
         },
       );
-      } else if (errorCallback) {
-        errorCallback(new globalThis.Error(Error.CONFIG));
+      } else {
+        // Config disappeared between #openConnection (where msg was
+        // pinned) and now; release the pin so it doesn't sit in the
+        // Set until destroy() clears everything.
+        this.#pendingMessages?.delete(msg);
+        if (errorCallback) errorCallback(new globalThis.Error(Error.CONFIG));
       }
     } catch (error) {
+      this.#pendingMessages?.delete(msg);
       if (errorCallback) errorCallback(error);
       else console.error(LOG_PREFIX, "open connection message error", error);
     }
