@@ -1028,10 +1028,16 @@ export class Manager extends Utils.Emitter {
                   "will retry",
                   msg.method + ":" + msg.uri.get_path(),
                 );
-                // Retry this connection attempt
-                Utils.Timer.run(CONNECTION_RETRY_DELAY, () => {
-                  this.#openConnectionMessage(msg, callback, errorCallback);
-                });
+                // Retry this connection attempt. Skip if we're tearing
+                // the manager down — the static `Utils.Timer.run` source
+                // is otherwise not tracked by destroy() and would re-fire
+                // a request on a dead session.
+                if (!this.#httpAborting) {
+                  Utils.Timer.run(CONNECTION_RETRY_DELAY, () => {
+                    if (this.#httpAborting) return;
+                    this.#openConnectionMessage(msg, callback, errorCallback);
+                  });
+                }
                 return;
               }
               if (errorCallback) {
