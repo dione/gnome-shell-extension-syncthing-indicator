@@ -59,6 +59,7 @@ export default class Config {
   #parseAll;
   #autoConfig = true;
   #exists = false;
+  #existsPromise = null;
 
   CONFIG_PATH_KEY = "Configuration file";
 
@@ -209,19 +210,33 @@ export default class Config {
   }
 
   async exists() {
-    if (!this.#exists) {
-      await this.load();
-      let retries = 0;
-      while (!this.#exists && retries < LOAD_RETRY_COUNT) {
-        console.warn(LOG_PREFIX, "config not found, retrying...", retries + 1);
-        await new Promise((resolve) => {
-          new Utils.Timer(LOAD_RETRY_DELAY).run(resolve);
-        });
-        await this.load();
-        retries++;
-      }
+    if (this.#exists) return true;
+    // Coalesce concurrent callers onto a single in-flight load so
+    // they don't both run the retry loop and race on `clear()`.
+    if (!this.#existsPromise) {
+      this.#existsPromise = (async () => {
+        try {
+          await this.load();
+          let retries = 0;
+          while (!this.#exists && retries < LOAD_RETRY_COUNT) {
+            console.warn(
+              LOG_PREFIX,
+              "config not found, retrying...",
+              retries + 1,
+            );
+            await new Promise((resolve) => {
+              new Utils.Timer(LOAD_RETRY_DELAY).run(resolve);
+            });
+            await this.load();
+            retries++;
+          }
+          return this.#exists;
+        } finally {
+          this.#existsPromise = null;
+        }
+      })();
     }
-    return this.#exists;
+    return this.#existsPromise;
   }
 
   get APIKey() {
