@@ -326,17 +326,25 @@ export const FolderMenuItem = GObject.registerClass(
       this.actor.add_child(this.label);
       this.actor.label_actor = this.label;
 
-      this._folder.connect(Syncthing.Signal.STATE_CHANGE, (folder, state) => {
-        this.icon.style_class = "popup-menu-icon syncthing-state-icon " + state;
-      });
+      this._folderSignals = [
+        this._folder.connect(Syncthing.Signal.STATE_CHANGE, (folder, state) => {
+          this.icon.style_class = "popup-menu-icon syncthing-state-icon " + state;
+        }),
+        this._folder.connect(Syncthing.Signal.NAME_CHANGE, (folder, name) => {
+          this.label.text = name;
+        }),
+        this._folder.connect(Syncthing.Signal.DESTROY, () => {
+          this.destroy();
+        }),
+      ];
+      this.connect("destroy", () => this._onDestroy());
+    }
 
-      this._folder.connect(Syncthing.Signal.NAME_CHANGE, (folder, name) => {
-        this.label.text = name;
-      });
-
-      this._folder.connect(Syncthing.Signal.DESTROY, (folder) => {
-        this.destroy();
-      });
+    _onDestroy() {
+      if (this._folderSignals && this._folder) {
+        this._folderSignals.forEach((id) => this._folder.disconnect(id));
+      }
+      this._folderSignals = null;
     }
 
     activate(event) {
