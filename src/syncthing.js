@@ -955,10 +955,14 @@ export class Manager extends Utils.Emitter {
     try {
       if (await this.#extensionConfig.exists()) {
         let msg = Soup.Message.new(method, this.#extensionConfig.URI + path);
-        // Accept self signed certificates (for now)
-        msg.connect("accept-certificate", () => {
-          return true;
-        });
+        // Auto-accept TLS certs only for loopback URIs (typical
+        // Syncthing self-signed setup). Custom prefURIs pointing at
+        // remote hosts must present a valid cert — bypassing TLS
+        // there silently exposes the API key to a MITM.
+        const host = msg.uri.get_host();
+        if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+          msg.connect("accept-certificate", () => true);
+        }
         msg.request_headers.append("X-API-Key", this.#extensionConfig.APIKey);
         this.#pendingMessages.add(msg);
         this.#openConnectionMessage(msg, callback, errorCallback);
